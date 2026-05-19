@@ -833,7 +833,7 @@
   justify-content: center;
   cursor: ew-resize;
   z-index: 10;
-  opacity: 0;
+  opacity: 0.4;
   transition: opacity 0.2s ease;
 }
 

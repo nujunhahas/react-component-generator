@@ -58,6 +58,7 @@ export function LivePreview({ code, viewportSize = 'desktop', onResizeChange }: 
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDraggingRef.current) return;
       const dx = e.clientX - dragStartXRef.current;
+      // preview-render이 center-aligned이므로, 오른쪽 드래그는 양쪽 확장 (dx * 2)
       const newWidth = Math.max(320, Math.min(containerWidth, dragStartWidthRef.current + dx * 2));
       setResizedWidth(newWidth);
       onResizeChange?.(newWidth);
