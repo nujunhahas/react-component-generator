@@ -55,27 +55,39 @@ export function LivePreview({ code, viewportSize = 'desktop', onResizeChange }: 
   }, [viewportSize, onResizeChange]);
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const originalUserSelect = document.body.style.userSelect;
+
+    const handleDragMove = (clientX: number) => {
       if (!isDraggingRef.current) return;
-      const dx = e.clientX - dragStartXRef.current;
+      const dx = clientX - dragStartXRef.current;
       // preview-render이 center-aligned이므로, 오른쪽 드래그는 양쪽 확장 (dx * 2)
       const newWidth = Math.max(320, Math.min(containerWidth, dragStartWidthRef.current + dx * 2));
       setResizedWidth(newWidth);
       onResizeChange?.(newWidth);
     };
 
-    const handleMouseUp = () => {
+    const handleDragEnd = () => {
       isDraggingRef.current = false;
       document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.style.userSelect = originalUserSelect;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => handleDragMove(e.clientX);
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      handleDragMove(e.touches[0].clientX);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleDragEnd);
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseup', handleDragEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleDragEnd);
     };
   }, [containerWidth, onResizeChange]);
 
@@ -83,13 +95,22 @@ export function LivePreview({ code, viewportSize = 'desktop', onResizeChange }: 
   const scale = containerWidth > 0 ? Math.min(1, containerWidth / vpWidth) : 1;
   const heightOffset = innerHeight > 0 ? innerHeight * scale - innerHeight : 0;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const startDrag = (clientX: number) => {
     isDraggingRef.current = true;
-    dragStartXRef.current = e.clientX;
+    dragStartXRef.current = clientX;
     dragStartWidthRef.current = resizedWidth ?? VIEWPORT_WIDTHS[viewportSize];
     document.body.style.cursor = 'ew-resize';
     document.body.style.userSelect = 'none';
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    startDrag(e.clientX);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    startDrag(e.touches[0].clientX);
   };
 
   return (
@@ -117,7 +138,14 @@ export function LivePreview({ code, viewportSize = 'desktop', onResizeChange }: 
                   </div>
                 </div>
               </div>
-              <div className="resize-handle" onMouseDown={handleMouseDown} title="드래그하여 너비 조절" />
+              <div
+                className="resize-handle"
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                title="드래그하여 너비 조절"
+                role="slider"
+                aria-label="미리보기 너비 조절"
+              />
             </div>
           </div>
           <LiveError className="preview-error" />
